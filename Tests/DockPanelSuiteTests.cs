@@ -22,44 +22,52 @@
 /// </copyright>
 #endregion
 
-using System.IO;
 using Mono.Cecil;
-using System.Linq;
+using Obfuscar;
+using System;
+using System.IO;
 using Xunit;
 
 namespace ObfuscarTests
 {
-	public class PortableTests
+	public class DockPanelSuiteTests
 	{
-		[Fact]
-		public void CheckPortable()
+		static MethodDefinition FindByFullName(TypeDefinition typeDef, string name)
 		{
-			string xml = string.Format(
-				@"<?xml version='1.0'?>" +
-				@"<Obfuscator>" +
-				@"<Var name='InPath' value='{0}' />" +
-				@"<Var name='OutPath' value='{1}' />" +
-				@"<Var name='HideStrings' value='false' />" +
-				@"<Var name='KeyFile' value='$(InPath)\..\dockpanelsuite.snk' />" +
-				@"<Module file='$(InPath)\SharpSnmpLib.Portable.dll' />" +
-				@"</Obfuscator>", TestHelper.InputPath, TestHelper.OutputPath);
+			foreach (MethodDefinition method in typeDef.Methods)
+				if (method.FullName == name)
+					return method;
+
+			Assert.True(false, String.Format("Expected to find method: {0}", name));
+			return null; // never here
+		}
+
+		[Fact]
+		public void CheckGeneric()
+		{
+			string xml = String.Format(
+							 @"<?xml version='1.0'?>" +
+							 @"<Obfuscator>" +
+							 @"<Var name='InPath' value='{0}' />" +
+							 @"<Var name='OutPath' value='{1}' />" +
+							 @"<Var name='KeyFile' value='$(InPath)\..\dockpanelsuite.snk' />" +
+							 @"<Var name='HidePrivateApi' value='true' />" +
+							 @"<Module file='$(InPath)\WeifenLuo.WinFormsUI.Docking.dll' />" +
+							 @"</Obfuscator>", TestHelper.InputPath, TestHelper.OutputPath);
 
 			TestHelper.CleanInput();
 
 			// build it with the keyfile option (embeds the public key, and signs the assembly)
-			File.Copy(Path.Combine(TestHelper.InputPath, @"..\SharpSnmpLib.Portable.dll"), Path.Combine(TestHelper.InputPath, "SharpSnmpLib.Portable.dll"), true);
+			File.Copy(Path.Combine(TestHelper.InputPath, @"..\WeifenLuo.WinFormsUI.Docking.dll"), Path.Combine(TestHelper.InputPath, "WeifenLuo.WinFormsUI.Docking.dll"), true);
 
 			var map = TestHelper.Obfuscate(xml).Mapping;
 
 			AssemblyDefinition inAssmDef = AssemblyDefinition.ReadAssembly(
-				Path.Combine(TestHelper.InputPath, "SharpSnmpLib.Portable.dll"));
+											   Path.Combine(TestHelper.InputPath, "WeifenLuo.WinFormsUI.Docking.dll"));
 
-			AssemblyDefinition outAssmDef = AssemblyDefinition.ReadAssembly(
-				Path.Combine(TestHelper.OutputPath, "SharpSnmpLib.Portable.dll"));
-
-			var corlibs = outAssmDef.MainModule.AssemblyReferences.Where(reference => reference.Name == "mscorlib");
-			Assert.Equal(1, corlibs.Count());
-			Assert.Equal("2.0.5.0", corlibs.First().Version.ToString());
+			TypeDefinition classAType = inAssmDef.MainModule.GetType("WeifenLuo.WinFormsUI.Docking.AutoHideStripBase/TabCollection/<System.Collections.Generic.IEnumerable<WeifenLuo.WinFormsUI.Docking.AutoHideStripBase.Tab>.GetEnumerator>d__0");
+			var type = map.GetClass(new TypeKey(classAType));
+			Assert.True(type.Status == ObfuscationStatus.Renamed, "Type should have been renamed.");
 		}
 	}
 }

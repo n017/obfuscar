@@ -23,42 +23,28 @@
 #endregion
 
 using System;
-using System.IO;
-using Mono.Cecil;
-using Obfuscar;
-using Xunit;
+using System.Collections.Generic;
+using System.Text;
 
-namespace ObfuscarTests
+namespace TestClasses
 {
-	public class BamlTests
+	public class PublicClass1
 	{
-		[Fact]
-		public void CheckCannotObfuscateSigned( )
+		private string test = "test1";
+
+		public string PublicMethod()
 		{
-			string xml = String.Format(
-				@"<?xml version='1.0'?>" +
-				@"<Obfuscator>" +
-				@"<Var name='InPath' value='{0}' />" +
-				@"<Var name='OutPath' value='{1}' />" +
-				@"<Module file='$(InPath)\WpfApplication1.dll' />" +
-				@"</Obfuscator>", TestHelper.InputPath, TestHelper.OutputPath );
+			return "class1" + test;
+		}
+	}
 
-			TestHelper.CleanInput( );
+	public class PublicClass2
+	{
+		private string test = "test2";
 
-			// build it with the keyfile option (embeds the public key, and signs the assembly)
-			File.Copy(Path.Combine(TestHelper.InputPath, @"..\WpfApplication1.dll"), Path.Combine(TestHelper.InputPath, "WpfApplication1.dll"), true);
-
-			var map = TestHelper.Obfuscate( xml ).Mapping;
-
-			AssemblyDefinition inAssmDef = AssemblyDefinition.ReadAssembly(
-				Path.Combine(TestHelper.InputPath, "WpfApplication1.dll"));
-
-			AssemblyDefinition outAssmDef = AssemblyDefinition.ReadAssembly(
-				Path.Combine(TestHelper.OutputPath, "WpfApplication1.dll"));
-
-			TypeDefinition classAType = inAssmDef.MainModule.GetType("WpfApplication1.MainWindow");
-			var obfuscated = map.GetClass(new TypeKey(classAType));
-			Assert.True(obfuscated.Status == ObfuscationStatus.Skipped);
+		public string Test()
+		{
+			return "class2" + test;
 		}
 	}
 }
